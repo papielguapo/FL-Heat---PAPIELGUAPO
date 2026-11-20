@@ -537,13 +537,13 @@ public:
     static constexpr int kDesignWidth  = 130;
     static constexpr int kDesignHeight = 290;
 
-    // Exact fixed single size matching the user's screenshot (168 x 310 px client area)
-    static constexpr int kBaseWidth  = 168;
-    static constexpr int kBaseHeight = 310;
-    static constexpr int kMinWidth   = 168;
-    static constexpr int kMinHeight  = 310;
-    static constexpr int kMaxWidth   = 168;
-    static constexpr int kMaxHeight  = 310;
+    // Compact default size safe for FL Studio Fruity Wrapper (130 x 240 px)
+    static constexpr int kBaseWidth  = 130;
+    static constexpr int kBaseHeight = 240;
+    static constexpr int kMinWidth   = 118;
+    static constexpr int kMinHeight  = 218;
+    static constexpr int kMaxWidth   = 210;
+    static constexpr int kMaxHeight  = 388;
 
     explicit FLHeatAudioProcessorEditor (FLHeatAudioProcessor&);
     ~FLHeatAudioProcessorEditor() override;

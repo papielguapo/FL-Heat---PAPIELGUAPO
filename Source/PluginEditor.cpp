@@ -51,9 +51,11 @@ FLHeatAudioProcessorEditor::FLHeatAudioProcessorEditor (FLHeatAudioProcessor& p)
     linkButton.skinStyle   = currentSkinStyle;
     bypassButton.skinStyle = currentSkinStyle;
 
-    // Fixed single window size matching the exact screenshot dimensions (168 x 310 px)
+    // Compact default window size safe for FL Studio Wrapper (130 x 240 px), restorable from state
     setResizable (false, false);
-    setSize (kBaseWidth, kBaseHeight);
+    const int initW = juce::jlimit (kMinWidth,  kMaxWidth,  audioProcessor.getSavedEditorWidth());
+    const int initH = juce::jlimit (kMinHeight, kMaxHeight, audioProcessor.getSavedEditorHeight());
+    setSize (initW, initH);
 
     startTimerHz (60);
 }
@@ -103,6 +105,14 @@ void FLHeatAudioProcessorEditor::showContextMenu()
     menu.addItem (20, "LNK: Master Linked Console (All Tracks)", true,  isLnk);
     menu.addItem (21, "IND: Individual Track Controls",          true, !isLnk);
 
+    menu.addSeparator();
+    menu.addSectionHeader ("UI SIZE (FL STUDIO SAFE)");
+    const int curW = getWidth();
+    menu.addItem (30, "Mini 70% (118 x 218 px)",            true, curW <= 122);
+    menu.addItem (31, "Compact 80% (130 x 240 px Default)", true, curW > 122 && curW <= 140);
+    menu.addItem (32, "Medium 90% (150 x 277 px)",          true, curW > 140 && curW <= 158);
+    menu.addItem (33, "Classic 100% (168 x 310 px)",        true, curW > 158);
+
     juce::Component::SafePointer<FLHeatAudioProcessorEditor> safeThis (this);
     menu.showMenuAsync (juce::PopupMenu::Options(), [safeThis] (int result)
     {
@@ -126,6 +136,16 @@ void FLHeatAudioProcessorEditor::showContextMenu()
         {
             if (auto* p = proc.getAPVTS().getParameter (FLHeatAudioProcessor::kParamLink))
                 p->setValueNotifyingHost (result == 20 ? 1.0f : 0.0f);
+            safeThis->repaint();
+        }
+        else if (result >= 30 && result <= 33)
+        {
+            static constexpr int kWidths[4]  = { 118, 130, 150, 168 };
+            static constexpr int kHeights[4] = { 218, 240, 277, 310 };
+            const int idx = result - 30;
+            proc.setSavedEditorSize (kWidths[idx], kHeights[idx]);
+            safeThis->setSize (kWidths[idx], kHeights[idx]);
+            safeThis->resized();
             safeThis->repaint();
         }
     });
@@ -218,7 +238,8 @@ void FLHeatAudioProcessorEditor::mouseDoubleClick (const juce::MouseEvent& event
 
 void FLHeatAudioProcessorEditor::resized()
 {
-    audioProcessor.setSavedEditorSize (kBaseWidth, kBaseHeight);
+    if (getWidth() > 0 && getHeight() > 0)
+        audioProcessor.setSavedEditorSize (getWidth(), getHeight());
 
     const float scaleX = static_cast<float> (getWidth())  / static_cast<float> (kDesignWidth);
     const float scaleY = static_cast<float> (getHeight()) / static_cast<float> (kDesignHeight);

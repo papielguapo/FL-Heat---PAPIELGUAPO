@@ -114,8 +114,8 @@ private:
     std::atomic<bool> isSyncingFromSharedBus { false };
     uint64_t lastObservedRevision = 0;
 
-    std::atomic<int> savedEditorWidth  { 168 };
-    std::atomic<int> savedEditorHeight { 310 };
+    std::atomic<int> savedEditorWidth  { 130 };
+    std::atomic<int> savedEditorHeight { 240 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FLHeatAudioProcessor)
 };
