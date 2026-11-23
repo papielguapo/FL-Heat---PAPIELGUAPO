@@ -282,10 +282,11 @@ public:
         const float x3 = rawIn * inGain;
 
         // Stage 1: Pre-emphasis differentiator + First LUT lookup (0x500001E51..0x500001EE9)
-        float u1 = (x3 * c.preScaleCoef - stateZ0[ch]) * c.preDiffCoef + 1.0f;
+        // Note: At 0x500001E6C, `mulss xmm2, xmm11` multiplies by `[rcx+1Ch]` (`c.dryMakeUp`)
+        float u1 = (x3 * c.preScaleCoef - stateZ0[ch]) * c.dryMakeUp - (-1.0f);
         float idx1 = juce::jlimit (0.0f, 16383.0f, u1 * 8191.5f);
 
-        const int i1 = std::min (16382, static_cast<int> (idx1));
+        const int i1 = static_cast<int> (idx1);
         const float frac1 = idx1 - static_cast<float> (i1);
         const float lut1 = (1.0f - frac1) * tableBase[i1] + frac1 * tableBase[i1 + 1];
 
@@ -293,10 +294,10 @@ public:
         const float buf1F30 = w1 * c.preCoef1;
 
         // Stage 2: Second LUT lookup with harmonic feedback (0x500001ED5..0x500001F4C)
-        float u2 = (x3 + w1) + 1.0f;
+        float u2 = (x3 + w1) - (-1.0f);
         float idx2 = juce::jlimit (0.0f, 16383.0f, u2 * 8191.5f);
 
-        const int i2 = std::min (16382, static_cast<int> (idx2));
+        const int i2 = static_cast<int> (idx2);
         const float frac2 = idx2 - static_cast<float> (i2);
         const float buf2F2C = (1.0f - frac2) * tableBase[i2] + frac2 * tableBase[i2 + 1];
 
@@ -307,11 +308,14 @@ public:
         stateZ1[ch] = stateZ1[ch] * fbCoeff + (buf1F30 + buf2F2C) * c.preDiffCoef;
         const float buf0F2C = buf1F30 * c.postMix1 + stateZ1[ch] * c.postG;
 
-        // Stage 4: Final harmonic recombination & output gain compensation (0x500002130..0x500002280)
-        // Note: In 0x500002157..0x50000215B: yOut = (x3 + (buf0F2C - x3 * postG * postB0)) * dryMakeUp (xmm14 = [rcx+1Ch])
+        // Stage 4: Final harmonic recombination & output scaling (0x50000213E..0x500002163)
+        // In HEAT.aaxplugin @ 0x500002157..0x50000215B: yOut = (x3 + (buf0F2C - x3 * postG * postB0)) * postA1
         const float postSub = c.postG * c.postB0;
         const float wetHarmonic = buf0F2C - x3 * postSub;
         const float yOut = (x3 + wetHarmonic) * c.postA1;
+
+        if (currentOSMode == kOS_1x_NativePT)
+            return yOut;
 
         const float unityComp = 1.0f / std::max (0.25f, inGain * c.postA1);
         return yOut * unityComp;
@@ -376,12 +380,19 @@ public:
                 if (delta > blockPeakActivity)
                     blockPeakActivity = delta;
 
-                // 7 Hz DC Blocker
-                const float dcOut = y - dcX1[ch] + dcBlockerR * dcY1[ch];
-                dcX1[ch] = y;
-                dcY1[ch] = dcOut;
+                if (currentOSMode == kOS_1x_NativePT)
+                {
+                    chPtr[ch][i] = y;
+                }
+                else
+                {
+                    // 7 Hz DC Blocker
+                    const float dcOut = y - dcX1[ch] + dcBlockerR * dcY1[ch];
+                    dcX1[ch] = y;
+                    dcY1[ch] = dcOut;
 
-                chPtr[ch][i] = dcOut;
+                    chPtr[ch][i] = dcOut;
+                }
             }
         }
 
